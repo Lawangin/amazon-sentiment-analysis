@@ -33,12 +33,15 @@ te.close()
 labels = [0 if x.split(' ')[0] == '__label__1' else 1 for x in train_file_lines]
 texts = [x.split(' ', 1)[1][:-1].lower() for x in train_file_lines]
 
+labels = labels[:int(len(labels)/2)]
+texts = texts[:int(len(texts)/2)]
+
 # convert digits to 0
-for i in range(int(len(texts) / 4)):
+for i in range(len(texts)):
     texts[i] = re.sub('\d', '0', texts[i])
 
 # convert urls to "<url>"
-for i in range(int(len(texts) / 4)):
+for i in range(len(texts)):
     if 'www.' in texts[i] or 'http:' in texts[i] or 'https:' in texts[i] or '.com' in \
             texts[i]:
         texts[i] = re.sub(r"([^ ]+(?<=\.[a-z]{3}))", "<url>", texts[i])
@@ -46,12 +49,15 @@ for i in range(int(len(texts) / 4)):
 test_labels = [0 if x.split(' ')[0] == '__label__1' else 1 for x in test_file_lines]
 test_texts = [x.split(' ', 1)[1][:-1].lower() for x in test_file_lines]
 
+test_labels = test_labels[:int(len(test_labels)/2)]
+test_texts = test_texts[:int(len(test_texts)/2)]
+
 # convert digits to 0
-for i in range(int(len(test_texts)/4)):
+for i in range(len(test_texts)):
     test_texts[i] = re.sub('\d', '0', test_texts[i])
 
 # convert urls to "<url>"
-for i in range(int(len(test_texts)/4)):
+for i in range(len(test_texts)):
     if 'www.' in test_texts[i] or 'http:' in test_texts[i] or 'https:' in test_texts[i] or '.com' in \
             test_texts[i]:
         test_texts[i] = re.sub(r"([^ ]+(?<=\.[a-z]{3}))", "<url>", test_texts[i])
@@ -60,8 +66,8 @@ max_len = 100
 training_samples = 20000
 validation_sample = 5000
 # max words
-max_features = 10000
-batch_size = 2098
+max_features = 20000
+batch_size = 4196
 
 # labels = []
 # texts = []
@@ -157,7 +163,7 @@ model.add(Embedding(max_features, embedding_dim, input_length=max_len, trainable
 # model.add(tf.keras.layers.LSTM(32, input_shape=(200, 32)))
 # model.add(SpatialDropout1D(0.25))
 # model.add(LSTM(32, return_sequences=True, dropout=0.5, recurrent_dropout=0.5))
-model.add(LSTM(32))
+model.add(LSTM(512))
 # model.add(LSTM(512, kernel_regularizer=l2(4e-6), bias_regularizer=l2(4e-6), kernel_constraint=maxnorm(10),
 #                     bias_constraint=maxnorm(10)))
 model.add(Dropout(0.5))
@@ -179,8 +185,7 @@ def model_one():
 
 def model_two():
     model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['acc'])
-    return model.fit(data, label, epochs=10, batch_size=batch_size, validation_split=0.2, shuffle=True,
-                     validation_steps=4)
+    return model.fit(data, label, epochs=10, batch_size=batch_size, validation_split=0.2, shuffle=True)
 
 
 def model_three():
@@ -196,37 +201,37 @@ def model_four():
 
 
 model_1 = model_one()
-# model_2 = model_two()
-# model_3 = model_three()
-# model_4 = model_four()
+model_2 = model_two()
+model_3 = model_three()
+model_4 = model_four()
 
-model_1.save('my_model.h5')
+model.save('my_model.h5')
 """
 show output
 """
 acc = model_1.history['acc']
 val_acc_1 = model_1.history['val_acc']
-# val_acc_2 = model_2.history['val_acc']
-# val_acc_3 = model_3.history['val_acc']
-# val_acc_4 = model_4.history['val_acc']
+val_acc_2 = model_2.history['val_acc']
+val_acc_3 = model_3.history['val_acc']
+val_acc_4 = model_4.history['val_acc']
 loss = model_1.history['loss']
 val_loss = model_1.history['val_loss']
 
 epochs = range(1, len(acc) + 1)
 
-plt.plot(epochs, acc, 'bo', label='Training Acc')
+# plt.plot(epochs, acc, 'bo', label='Training Acc')
 plt.plot(epochs, val_acc_1, 'b', label='Validation Acc 1')
-# plt.plot(epochs, val_acc_2, 'r', label='Validation Acc 2')
-# plt.plot(epochs, val_acc_2, 'g', label='Validation Acc 3')
-# plt.plot(epochs, val_acc_4, 'y', label='Validation Acc 4')
+plt.plot(epochs, val_acc_2, 'r', label='Validation Acc 2')
+plt.plot(epochs, val_acc_2, 'g', label='Validation Acc 3')
+plt.plot(epochs, val_acc_4, 'y', label='Validation Acc 4')
 
 plt.legend()
 
-plt.figure()
-
-plt.plot(epochs, loss, 'bo', label='Training Loss')
-plt.plot(epochs, val_loss, 'b', label='Validation Loss')
-plt.legend()
+# plt.figure()
+#
+# plt.plot(epochs, loss, 'bo', label='Training Loss')
+# plt.plot(epochs, val_loss, 'b', label='Validation Loss')
+# plt.legend()
 
 plt.show()
 
@@ -234,5 +239,5 @@ plt.show()
 """
 Evaluate
 """
-test_loss, test_acc = model_1.evaluate(test_texts, test_labels)
+test_loss, test_acc = model.evaluate(test_texts, test_labels)
 print(test_acc)
