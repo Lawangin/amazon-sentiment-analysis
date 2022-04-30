@@ -30,6 +30,8 @@ test_file_lines = te.readlines()
 tr.close()
 te.close()
 
+# you want to split the data from labels to actual text. This is important as performance reduces
+# around 55% if data is not split.
 labels = [0 if x.split(' ')[0] == '__label__1' else 1 for x in train_file_lines]
 texts = [x.split(' ', 1)[1][:-1].lower() for x in train_file_lines]
 
@@ -107,8 +109,17 @@ tokenizer = Tokenizer(num_words=max_features)
 tokenizer.fit_on_texts(texts)
 sequences = tokenizer.texts_to_sequences(texts)
 word_index = tokenizer.index_word
+
+test_tokenizer = Tokenizer(num_words=max_features)
+test_tokenizer.fit_on_texts(test_texts)
+test_sequences = test_tokenizer.texts_to_sequences(test_texts)
+
 data = pad_sequences(sequences, maxlen=max_len)
 label = np.asarray(labels)
+
+test_data = pad_sequences(test_sequences, maxlen=max_len)
+test_label = np.asarray(test_labels)
+
 print('Found %s unique tokens' % len(word_index))
 
 # glove_dir = './glove.6B.100d.txt'
@@ -163,10 +174,12 @@ model.add(Embedding(max_features, embedding_dim, input_length=max_len, trainable
 # model.add(tf.keras.layers.LSTM(32, input_shape=(200, 32)))
 # model.add(SpatialDropout1D(0.25))
 # model.add(LSTM(32, return_sequences=True, dropout=0.5, recurrent_dropout=0.5))
-model.add(LSTM(512))
-# model.add(LSTM(512, kernel_regularizer=l2(4e-6), bias_regularizer=l2(4e-6), kernel_constraint=maxnorm(10),
+# model.add(LSTM(512))
+model.add(LSTM(512, kernel_regularizer=l2(4e-6), bias_regularizer=l2(4e-6), kernel_constraint=maxnorm(10),
+                    bias_constraint=maxnorm(10)))
+# model.add(LSTM(512, kernel_regularizer=l2(0.1), bias_regularizer=l2(0.1), kernel_constraint=maxnorm(10),
 #                     bias_constraint=maxnorm(10)))
-model.add(Dropout(0.5))
+model.add(Dropout(0.3))
 model.add(tf.keras.layers.Dense(64, activation='relu'))
 model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
 print(model.summary())
@@ -179,8 +192,8 @@ optTwo = Adam(lr=0.001)
 
 
 def model_one():
-    model.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['acc'])
-    return model.fit(data, label, epochs=10, batch_size=batch_size, validation_split=0.2, shuffle=True)
+    model.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['acc', 'binary_accuracy'])
+    return model.fit(data, label, epochs=7, batch_size=batch_size, validation_split=0.2, shuffle=True)
 
 
 def model_two():
@@ -201,9 +214,9 @@ def model_four():
 
 
 model_1 = model_one()
-model_2 = model_two()
-model_3 = model_three()
-model_4 = model_four()
+# model_2 = model_two()
+# model_3 = model_three()
+# model_4 = model_four()
 
 model.save('my_model.h5')
 """
@@ -211,27 +224,27 @@ show output
 """
 acc = model_1.history['acc']
 val_acc_1 = model_1.history['val_acc']
-val_acc_2 = model_2.history['val_acc']
-val_acc_3 = model_3.history['val_acc']
-val_acc_4 = model_4.history['val_acc']
+# val_acc_2 = model_2.history['val_acc']
+# val_acc_3 = model_3.history['val_acc']
+# val_acc_4 = model_4.history['val_acc']
 loss = model_1.history['loss']
 val_loss = model_1.history['val_loss']
 
 epochs = range(1, len(acc) + 1)
 
-# plt.plot(epochs, acc, 'bo', label='Training Acc')
+plt.plot(epochs, acc, 'bo', label='Training Acc')
 plt.plot(epochs, val_acc_1, 'b', label='Validation Acc 1')
-plt.plot(epochs, val_acc_2, 'r', label='Validation Acc 2')
-plt.plot(epochs, val_acc_2, 'g', label='Validation Acc 3')
-plt.plot(epochs, val_acc_4, 'y', label='Validation Acc 4')
+# plt.plot(epochs, val_acc_2, 'r', label='Validation Acc 2')
+# plt.plot(epochs, val_acc_2, 'g', label='Validation Acc 3')
+# plt.plot(epochs, val_acc_4, 'y', label='Validation Acc 4')
 
 plt.legend()
 
-# plt.figure()
-#
-# plt.plot(epochs, loss, 'bo', label='Training Loss')
-# plt.plot(epochs, val_loss, 'b', label='Validation Loss')
-# plt.legend()
+plt.figure()
+
+plt.plot(epochs, loss, 'bo', label='Training Loss')
+plt.plot(epochs, val_loss, 'b', label='Validation Loss')
+plt.legend()
 
 plt.show()
 
@@ -239,5 +252,5 @@ plt.show()
 """
 Evaluate
 """
-test_loss, test_acc = model.evaluate(test_texts, test_labels)
+test_loss, test_acc = model.evaluate(test_data, test_label, batch_size=batch_size)
 print(test_acc)
